@@ -17,6 +17,7 @@ from src.f16sim.aerodynamics import (
     DNDR_TABLE,
     ELEVATOR_GRID_DEG,
     aerodynamic_coefficients,
+    aerodynamic_loads,
     cl,
     cm,
     cn,
@@ -28,11 +29,14 @@ from src.f16sim.aerodynamics import (
     dldr,
     dnda,
     dndr,
+    f16_aerodynamic_loads,
 )
+from src.f16sim.air_data import air_data_from_body_velocity
 from src.f16sim.parameters import (
     mean_aerodynamic_chord,
     reference_cg_fraction,
     span,
+    wing_area,
 )
 
 
@@ -898,3 +902,200 @@ def test_aerodynamic_coefficients_combined_case():
     )
 
     assert np.allclose(actual, expected)
+
+
+def test_aerodynamic_loads_matches_manual_scaling():
+    coefficients = np.array([0.1, -0.2, 0.3, -0.04, 0.05, -0.06])
+    air_density = 1.225
+    true_airspeed = 100.0
+    qbar = 0.5 * air_density * true_airspeed**2
+    qs = qbar * wing_area
+    expected_forces = np.array(
+        [qs * coefficients[0], qs * coefficients[1], qs * coefficients[2]]
+    )
+    expected_moments = np.array(
+        [
+            qs * span * coefficients[3],
+            qs * mean_aerodynamic_chord * coefficients[4],
+            qs * span * coefficients[5],
+        ]
+    )
+
+    forces_body, moments_body = aerodynamic_loads(
+        coefficients, air_density, true_airspeed
+    )
+
+    assert np.allclose(forces_body, expected_forces)
+    assert np.allclose(moments_body, expected_moments)
+
+
+def test_aerodynamic_loads_zero_coefficients_produce_exactly_zero_loads():
+    forces_body, moments_body = aerodynamic_loads(np.zeros(6), 1.225, 100.0)
+
+    assert np.array_equal(forces_body, np.zeros(3))
+    assert np.array_equal(moments_body, np.zeros(3))
+
+
+def test_aerodynamic_loads_preserves_frd_coefficient_signs():
+    coefficients = np.array([0.1, -0.2, 0.3, -0.04, 0.05, -0.06])
+
+    forces_body, moments_body = aerodynamic_loads(coefficients, 1.225, 100.0)
+
+    assert np.array_equal(np.sign(forces_body), np.sign(coefficients[:3]))
+    assert np.array_equal(np.sign(moments_body), np.sign(coefficients[3:]))
+
+
+def test_aerodynamic_loads_returns_three_element_force_array():
+    forces_body, _ = aerodynamic_loads(np.zeros(6), 1.225, 100.0)
+
+    assert forces_body.shape == (3,)
+
+
+def test_aerodynamic_loads_returns_three_element_moment_array():
+    _, moments_body = aerodynamic_loads(np.zeros(6), 1.225, 100.0)
+
+    assert moments_body.shape == (3,)
+
+
+@pytest.mark.parametrize("coefficients", [np.zeros(5), np.zeros((6, 1))])
+def test_aerodynamic_loads_rejects_invalid_coefficient_shape(coefficients):
+    with pytest.raises(ValueError):
+        aerodynamic_loads(coefficients, 1.225, 100.0)
+
+
+@pytest.mark.parametrize("air_density", [0.0, -1.0])
+def test_aerodynamic_loads_rejects_nonpositive_air_density(air_density):
+    with pytest.raises(ValueError):
+        aerodynamic_loads(np.zeros(6), air_density, 100.0)
+
+
+@pytest.mark.parametrize("true_airspeed", [0.0, -1.0])
+def test_aerodynamic_loads_rejects_nonpositive_true_airspeed(true_airspeed):
+    with pytest.raises(ValueError):
+        aerodynamic_loads(np.zeros(6), 1.225, true_airspeed)
+
+
+def _velocity_from_air_data(true_airspeed, alpha_deg, beta_deg):
+    alpha_rad = np.radians(alpha_deg)
+    beta_rad = np.radians(beta_deg)
+    return np.array(
+        [
+            true_airspeed * np.cos(alpha_rad) * np.cos(beta_rad),
+            true_airspeed * np.sin(beta_rad),
+            true_airspeed * np.sin(alpha_rad) * np.cos(beta_rad),
+        ]
+    )
+
+
+def _expected_f16_loads(
+    velocity_body,
+    omega_body,
+    elevator_deg,
+    aileron_deg,
+    rudder_deg,
+    air_density,
+    cg_fraction=reference_cg_fraction,
+):
+    true_airspeed, alpha_deg, beta_deg = air_data_from_body_velocity(
+        velocity_body
+    )
+    p, q, r = omega_body
+    coefficients = aerodynamic_coefficients(
+        alpha_deg=alpha_deg,
+        beta_deg=beta_deg,
+        elevator_deg=elevator_deg,
+        aileron_deg=aileron_deg,
+        rudder_deg=rudder_deg,
+        p=p,
+        q=q,
+        r=r,
+        true_airspeed=true_airspeed,
+        cg_fraction=cg_fraction,
+    )
+    return aerodynamic_loads(coefficients, air_density, true_airspeed)
+
+
+def test_f16_aerodynamic_loads_nominal_end_to_end_case():
+    velocity_body = _velocity_from_air_data(175.0, 12.0, -8.0)
+    omega_body = np.array([0.25, -0.35, 0.15])
+    controls = (4.0, -8.0, 12.0)
+    air_density = 1.0
+    expected_forces, expected_moments = _expected_f16_loads(
+        velocity_body, omega_body, *controls, air_density
+    )
+
+    forces_body, moments_body = f16_aerodynamic_loads(
+        velocity_body, omega_body, *controls, air_density
+    )
+
+    assert np.allclose(forces_body, expected_forces)
+    assert np.allclose(moments_body, expected_moments)
+
+
+def test_f16_aerodynamic_loads_zero_controls_and_rates():
+    velocity_body = _velocity_from_air_data(150.0, 5.0, 0.0)
+    omega_body = np.zeros(3)
+    expected = _expected_f16_loads(
+        velocity_body, omega_body, 0.0, 0.0, 0.0, 1.225
+    )
+
+    actual = f16_aerodynamic_loads(
+        velocity_body, omega_body, 0.0, 0.0, 0.0, 1.225
+    )
+
+    assert np.allclose(actual[0], expected[0])
+    assert np.allclose(actual[1], expected[1])
+
+
+def test_f16_aerodynamic_loads_propagates_cg_fraction():
+    velocity_body = _velocity_from_air_data(160.0, 10.0, 5.0)
+    omega_body = np.array([0.1, -0.2, 0.05])
+    cg_fraction = 0.29
+    expected = _expected_f16_loads(
+        velocity_body, omega_body, -3.0, 4.0, -6.0, 1.1, cg_fraction
+    )
+
+    actual = f16_aerodynamic_loads(
+        velocity_body,
+        omega_body,
+        -3.0,
+        4.0,
+        -6.0,
+        1.1,
+        cg_fraction,
+    )
+
+    assert np.allclose(actual[0], expected[0])
+    assert np.allclose(actual[1], expected[1])
+
+
+@pytest.mark.parametrize("omega_body", [[0.0, 0.0], np.zeros((3, 1))])
+def test_f16_aerodynamic_loads_rejects_invalid_omega_shape(omega_body):
+    with pytest.raises(ValueError):
+        f16_aerodynamic_loads(
+            [100.0, 0.0, 0.0], omega_body, 0.0, 0.0, 0.0, 1.225
+        )
+
+
+def test_f16_aerodynamic_loads_propagates_zero_velocity_error():
+    with pytest.raises(ValueError):
+        f16_aerodynamic_loads(
+            [0.0, 0.0, 0.0], np.zeros(3), 0.0, 0.0, 0.0, 1.225
+        )
+
+
+@pytest.mark.parametrize("air_density", [0.0, -1.0])
+def test_f16_aerodynamic_loads_propagates_invalid_density(air_density):
+    with pytest.raises(ValueError):
+        f16_aerodynamic_loads(
+            [100.0, 0.0, 0.0], np.zeros(3), 0.0, 0.0, 0.0, air_density
+        )
+
+
+def test_f16_aerodynamic_loads_returns_three_element_arrays():
+    forces_body, moments_body = f16_aerodynamic_loads(
+        [100.0, 0.0, 0.0], np.zeros(3), 0.0, 0.0, 0.0, 1.225
+    )
+
+    assert forces_body.shape == (3,)
+    assert moments_body.shape == (3,)

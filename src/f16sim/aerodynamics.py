@@ -2,8 +2,14 @@
 
 import numpy as np
 
+from .air_data import air_data_from_body_velocity
 from .interpolation import bilinear_interpolate, linear_interpolate
-from .parameters import mean_aerodynamic_chord, reference_cg_fraction, span
+from .parameters import (
+    mean_aerodynamic_chord,
+    reference_cg_fraction,
+    span,
+    wing_area,
+)
 
 
 # Grids and CX data from Stevens, Lewis & Johnson, Appendix A, for the
@@ -703,3 +709,136 @@ def aerodynamic_coefficients(
     )
 
     return np.array([cxt, cyt, czt, clt, cmt, cnt])
+
+
+def aerodynamic_loads(coefficients, air_density, true_airspeed):
+    """
+    Convert aerodynamic coefficients to dimensional body-axis loads.
+
+    The coefficient and load signs follow the forward-right-down (FRD)
+    body-axis convention.
+
+    Parameters
+    ----------
+    coefficients : array_like
+        Nondimensional coefficients ordered as ``[CX, CY, CZ, Cl, Cm, Cn]``.
+    air_density : float
+        Air density in kilograms per cubic meter.
+    true_airspeed : float
+        True airspeed in meters per second.
+
+    Returns
+    -------
+    forces_body : numpy.ndarray
+        Body-axis aerodynamic forces ``[X, Y, Z]`` in newtons, with shape
+        ``(3,)``.
+    moments_body : numpy.ndarray
+        Body-axis aerodynamic moments ``[L, M, N]`` in newton-meters, with
+        shape ``(3,)``.
+
+    Raises
+    ------
+    ValueError
+        If ``coefficients`` does not have shape ``(6,)``, or if
+        ``air_density`` or ``true_airspeed`` is not positive.
+    """
+    coefficients = np.asarray(coefficients, dtype=float)
+    if coefficients.shape != (6,):
+        raise ValueError("coefficients must have shape (6,)")
+    if air_density <= 0.0:
+        raise ValueError("air_density must be positive")
+    if true_airspeed <= 0.0:
+        raise ValueError("true_airspeed must be positive")
+
+    cx_value, cy_value, cz_value, cl_value, cm_value, cn_value = coefficients
+    dynamic_pressure = 0.5 * air_density * true_airspeed**2
+    qs = dynamic_pressure * wing_area
+
+    forces_body = np.array(
+        [qs * cx_value, qs * cy_value, qs * cz_value]
+    )
+    moments_body = np.array(
+        [
+            qs * span * cl_value,
+            qs * mean_aerodynamic_chord * cm_value,
+            qs * span * cn_value,
+        ]
+    )
+
+    return forces_body, moments_body
+
+
+def f16_aerodynamic_loads(
+    velocity_body,
+    omega_body,
+    elevator_deg,
+    aileron_deg,
+    rudder_deg,
+    air_density,
+    cg_fraction=reference_cg_fraction,
+):
+    """
+    Compute complete F-16 aerodynamic loads from flight state and controls.
+
+    Inputs and outputs use the forward-right-down (FRD) body-axis convention.
+    Gravity and engine thrust are not included.
+
+    Parameters
+    ----------
+    velocity_body : array_like
+        Body-frame velocity ``[u, v, w]`` in meters per second.
+    omega_body : array_like
+        Body angular rates ``[p, q, r]`` in radians per second.
+    elevator_deg : float
+        Elevator deflection in degrees.
+    aileron_deg : float
+        Aileron deflection in degrees.
+    rudder_deg : float
+        Rudder deflection in degrees.
+    air_density : float
+        Air density in kilograms per cubic meter.
+    cg_fraction : float, optional
+        Center-of-gravity position as a fraction of mean aerodynamic chord.
+        The default is the Figure 3.5-2 reference CG fraction.
+
+    Returns
+    -------
+    forces_body : numpy.ndarray
+        FRD body-axis aerodynamic forces ``[X, Y, Z]`` in newtons.
+    moments_body : numpy.ndarray
+        FRD body-axis aerodynamic moments ``[L, M, N]`` in newton-meters.
+
+    Raises
+    ------
+    ValueError
+        If ``omega_body`` does not have shape ``(3,)``. Lower-level input
+        validation errors are propagated unchanged.
+    """
+    omega_body = np.asarray(omega_body, dtype=float)
+    if omega_body.shape != (3,):
+        raise ValueError("omega_body must have shape (3,)")
+
+    true_airspeed, alpha_deg, beta_deg = air_data_from_body_velocity(
+        velocity_body
+    )
+    p, q, r = omega_body
+
+    coefficients = aerodynamic_coefficients(
+        alpha_deg=alpha_deg,
+        beta_deg=beta_deg,
+        elevator_deg=elevator_deg,
+        aileron_deg=aileron_deg,
+        rudder_deg=rudder_deg,
+        p=p,
+        q=q,
+        r=r,
+        true_airspeed=true_airspeed,
+        cg_fraction=cg_fraction,
+    )
+    forces_body, moments_body = aerodynamic_loads(
+        coefficients=coefficients,
+        air_density=air_density,
+        true_airspeed=true_airspeed,
+    )
+
+    return forces_body, moments_body
