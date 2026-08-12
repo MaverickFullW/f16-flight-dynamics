@@ -78,7 +78,12 @@ def translational_dynamics(
     )
 
 
-def rotational_dynamics(omega_body, moments_body, inertia=J):
+def rotational_dynamics(
+    omega_body,
+    moments_body,
+    inertia=J,
+    engine_angular_momentum=0.0,
+):
     """
     Compute body angular acceleration from applied moments.
 
@@ -90,6 +95,9 @@ def rotational_dynamics(omega_body, moments_body, inertia=J):
         Applied body-frame moments ``[L, M, N]`` in newton-meters.
     inertia : array_like, optional
         3x3 body-axis inertia matrix in kilograms meter squared.
+    engine_angular_momentum : float, optional
+        Constant engine rotor angular momentum along the positive body x
+        axis in kilogram meter squared per second.
 
     Returns
     -------
@@ -101,7 +109,8 @@ def rotational_dynamics(omega_body, moments_body, inertia=J):
     moments_body = np.asarray(moments_body, dtype=float)
     inertia = np.asarray(inertia, dtype=float)
 
-    angular_momentum = inertia @ omega_body
+    h_engine = np.array([engine_angular_momentum, 0.0, 0.0])
+    angular_momentum = inertia @ omega_body + h_engine
     gyroscopic_moment = skew(omega_body) @ angular_momentum
 
     return np.linalg.solve(inertia, moments_body - gyroscopic_moment)
@@ -114,6 +123,7 @@ def state_derivative(
     mass_value=mass,
     inertia=J,
     gravity=9.80665,
+    engine_angular_momentum=0.0,
 ):
     """
     Compute the derivative of the 13-state rigid-body state vector.
@@ -135,6 +145,10 @@ def state_derivative(
         3x3 body-axis inertia matrix in kilograms meter squared.
     gravity : float, optional
         Gravitational acceleration in meters per second squared.
+    engine_angular_momentum : float, optional
+        Constant engine rotor angular momentum along the positive body x
+        axis in kilogram meter squared per second. The default of zero
+        preserves the rigid-body model without internal rotor momentum.
 
     Returns
     -------
@@ -160,6 +174,7 @@ def state_derivative(
         omega_body,
         moments_body,
         inertia=inertia,
+        engine_angular_momentum=engine_angular_momentum,
     )
 
     return np.concatenate((

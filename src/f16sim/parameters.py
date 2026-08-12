@@ -22,6 +22,8 @@ Jxz_slug_ft2 = 982.0
 span_ft = 30.0
 wing_area_ft2 = 300.0
 mean_aerodynamic_chord_ft = 11.32
+# Figure 3.5-2 uses engine angular momentum HX = 160 slug*ft^2/s.
+engine_angular_momentum_slug_ft2_s = 160.0
 
 weight_newtons = weight_lbf * LBF_TO_NEWTON
 mass = weight_newtons / STANDARD_GRAVITY
@@ -31,6 +33,11 @@ Jxx = Jxx_slug_ft2 * inertia_conversion
 Jyy = Jyy_slug_ft2 * inertia_conversion
 Jzz = Jzz_slug_ft2 * inertia_conversion
 Jxz = Jxz_slug_ft2 * inertia_conversion
+engine_angular_momentum = (
+    engine_angular_momentum_slug_ft2_s
+    * SLUG_TO_KILOGRAM
+    * FT_TO_METER**2
+)
 
 span = span_ft * FT_TO_METER
 wing_area = wing_area_ft2 * FT_TO_METER**2
