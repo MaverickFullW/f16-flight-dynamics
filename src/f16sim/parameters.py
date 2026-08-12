@@ -1,27 +1,44 @@
-"""F-16 physical parameters in SI units."""
+"""Physical parameters for the F-16 configuration in Figure 3.5-2.
+
+Dimensional runtime quantities are expressed in SI units and derived from
+the US customary values in Stevens, Lewis & Johnson Figure 3.5-2.
+"""
 
 import numpy as np
 
 
-# Stevens, Lewis & Johnson, Aircraft Control and Simulation, Appendix A,
-# tabulates the baseline aircraft data in US customary units. The source
-# values are: weight = 20,500 lbf; Jxx = 9,450 slug*ft^2;
-# Jyy = 55,814 slug*ft^2; Jzz = 63,100 slug*ft^2;
-# Jxz = 982 slug*ft^2; span = 30 ft; wing area = 300 ft^2;
-# mean aerodynamic chord = 11.32 ft; and reference CG = 3.962 ft.
-# All runtime quantities below are stored in SI units.
+# Exact unit conversions used to reproduce the Figure 3.5-2 configuration.
+LBF_TO_NEWTON = 4.4482216152605
+FT_TO_METER = 0.3048
+SLUG_TO_KILOGRAM = 14.593902937206363
+STANDARD_GRAVITY = 9.80665
 
-mass = 9298.643585  # kg
+# Source values from Stevens, Lewis & Johnson Figure 3.5-2.
+weight_lbf = 25000.0
+Jxx_slug_ft2 = 9496.0
+Jyy_slug_ft2 = 55814.0
+Jzz_slug_ft2 = 63100.0
+Jxz_slug_ft2 = 982.0
+span_ft = 30.0
+wing_area_ft2 = 300.0
+mean_aerodynamic_chord_ft = 11.32
 
-Jxx = 12812.479612  # kg*m^2
-Jyy = 75673.622968  # kg*m^2
-Jzz = 85552.112540  # kg*m^2
-Jxz = 1331.413225  # kg*m^2
+weight_newtons = weight_lbf * LBF_TO_NEWTON
+mass = weight_newtons / STANDARD_GRAVITY
 
-span = 9.144  # m
-wing_area = 27.870912  # m^2
-mean_aerodynamic_chord = 3.450336  # m
-reference_cg = 1.2076176  # m
+inertia_conversion = SLUG_TO_KILOGRAM * FT_TO_METER**2
+Jxx = Jxx_slug_ft2 * inertia_conversion
+Jyy = Jyy_slug_ft2 * inertia_conversion
+Jzz = Jzz_slug_ft2 * inertia_conversion
+Jxz = Jxz_slug_ft2 * inertia_conversion
+
+span = span_ft * FT_TO_METER
+wing_area = wing_area_ft2 * FT_TO_METER**2
+mean_aerodynamic_chord = mean_aerodynamic_chord_ft * FT_TO_METER
+
+# XCGR is a fraction of mean aerodynamic chord in the aerodynamic model.
+reference_cg_fraction = 0.35
+reference_cg = reference_cg_fraction * mean_aerodynamic_chord
 
 
 # Inertia tensor about the body axes using the forward-right-down (FRD)
