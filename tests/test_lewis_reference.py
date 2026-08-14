@@ -9,6 +9,7 @@ from src.f16sim.parameters import (
     FT_TO_METER,
     J,
     SLUG_TO_KILOGRAM,
+    figure_3_5_2_weight_lbf,
     wing_area,
 )
 
@@ -55,7 +56,9 @@ def _lewis_table_3_5_2_case():
     )
 
     lewis_gravity = 32.17 * FT_TO_METER
-    lewis_mass = (25000.0 / 32.17) * SLUG_TO_KILOGRAM
+    lewis_mass = (
+        figure_3_5_2_weight_lbf / 32.17
+    ) * SLUG_TO_KILOGRAM
     model_dot = f16_state_derivative(
         state,
         throttle=throttle,

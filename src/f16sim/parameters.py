@@ -13,8 +13,11 @@ FT_TO_METER = 0.3048
 SLUG_TO_KILOGRAM = 14.593902937206363
 STANDARD_GRAVITY = 9.80665
 
-# Source values from Stevens, Lewis & Johnson Figure 3.5-2.
-weight_lbf = 25000.0
+# Figure 3.5-2 explicitly prints WEIGHT = 25000 lbf.
+figure_3_5_2_weight_lbf = 25000.0
+# The nominal simulation weight reproduces the published longitudinal trim
+# data in Stevens, Lewis & Johnson Table 3.6-2.
+weight_lbf = 20490.0
 Jxx_slug_ft2 = 9496.0
 Jyy_slug_ft2 = 55814.0
 Jzz_slug_ft2 = 63100.0
