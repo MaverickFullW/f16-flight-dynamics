@@ -285,3 +285,80 @@ def pitch_attitude_pi_feedback_poles(
         poles[index] = np.sort_complex(roots)
 
     return poles
+
+
+def lateral_roll_rate_feedback_poles(A_lat, B_lat, k_p, Kr=50.0):
+    """Return lateral poles with fixed yaw damping and roll-rate feedback."""
+    A_lat = np.asarray(A_lat, dtype=float)
+    B_lat = np.asarray(B_lat, dtype=float)
+    if A_lat.shape != (4, 4):
+        raise ValueError("A_lat must have shape (4, 4)")
+    if B_lat.shape != (4, 2):
+        raise ValueError("B_lat must have shape (4, 2)")
+
+    k_p = np.asarray(k_p, dtype=float)
+    if k_p.ndim == 0:
+        k_p = k_p.reshape(1)
+    if k_p.ndim != 1 or k_p.size == 0 or not np.all(np.isfinite(k_p)):
+        raise ValueError("k_p must be a finite scalar or one-dimensional array")
+    Kr = np.asarray(Kr, dtype=float)
+    if Kr.shape != () or not np.isfinite(Kr):
+        raise ValueError("Kr must be a finite scalar")
+
+    aileron_column = B_lat[:, 0:1]
+    rudder_column = B_lat[:, 1:2]
+    roll_rate_output = np.array([[0.0, 0.0, 1.0, 0.0]])
+    yaw_rate_output = np.array([[0.0, 0.0, 0.0, 1.0]])
+    yaw_damped_matrix = A_lat + float(Kr) * (rudder_column @ yaw_rate_output)
+    poles = np.empty((k_p.size, 4), dtype=complex)
+    for index, gain in enumerate(k_p):
+        matrix = yaw_damped_matrix + gain * (
+            aileron_column @ roll_rate_output
+        )
+        poles[index] = np.sort_complex(np.linalg.eigvals(matrix))
+    return poles
+
+
+def lateral_bank_angle_feedback_poles(
+    A_lat,
+    B_lat,
+    k_phi,
+    Kp,
+    Kr=50.0,
+):
+    """Return poles of cascaded bank-angle/roll-rate and yaw-rate feedback."""
+    A_lat = np.asarray(A_lat, dtype=float)
+    B_lat = np.asarray(B_lat, dtype=float)
+    if A_lat.shape != (4, 4):
+        raise ValueError("A_lat must have shape (4, 4)")
+    if B_lat.shape != (4, 2):
+        raise ValueError("B_lat must have shape (4, 2)")
+
+    k_phi = np.asarray(k_phi, dtype=float)
+    if k_phi.ndim == 0:
+        k_phi = k_phi.reshape(1)
+    if k_phi.ndim != 1 or k_phi.size == 0:
+        raise ValueError("k_phi must be a scalar or nonempty one-dimensional array")
+    if not np.all(np.isfinite(k_phi)) or np.any(k_phi < 0.0):
+        raise ValueError("k_phi gains must be finite and nonnegative")
+    Kp = np.asarray(Kp, dtype=float)
+    Kr = np.asarray(Kr, dtype=float)
+    if Kp.shape != () or not np.isfinite(Kp):
+        raise ValueError("Kp must be a finite scalar")
+    if Kr.shape != () or not np.isfinite(Kr):
+        raise ValueError("Kr must be a finite scalar")
+
+    aileron_column = B_lat[:, 0:1]
+    rudder_column = B_lat[:, 1:2]
+    bank_output = np.array([[0.0, 1.0, 0.0, 0.0]])
+    roll_rate_output = np.array([[0.0, 0.0, 1.0, 0.0]])
+    yaw_rate_output = np.array([[0.0, 0.0, 0.0, 1.0]])
+    yaw_damped_matrix = A_lat + float(Kr) * (rudder_column @ yaw_rate_output)
+    poles = np.empty((k_phi.size, 4), dtype=complex)
+    for index, gain in enumerate(k_phi):
+        feedback_output = roll_rate_output + gain * bank_output
+        matrix = yaw_damped_matrix + float(Kp) * (
+            aileron_column @ feedback_output
+        )
+        poles[index] = np.sort_complex(np.linalg.eigvals(matrix))
+    return poles
