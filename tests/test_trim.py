@@ -13,12 +13,35 @@ def table_3_6_2_trim():
     )
 
 
-def test_trim_straight_level_matches_lewis_table_3_6_2(table_3_6_2_trim):
-    result = table_3_6_2_trim
+@pytest.mark.parametrize(
+    ("true_airspeed_ft_s", "throttle", "alpha_deg", "elevator_deg"),
+    [
+        (440.0, 0.113, 3.19, -0.671),
+        (500.0, 0.137, 2.14, -0.756),
+        (600.0, 0.200, 1.04, -0.846),
+        (700.0, 0.282, 0.382, -0.900),
+        (800.0, 0.378, -0.045, -0.943),
+    ],
+)
+def test_trim_straight_level_matches_lewis_table_3_6_2(
+    true_airspeed_ft_s,
+    throttle,
+    alpha_deg,
+    elevator_deg,
+):
+    result = trim_straight_level(
+        true_airspeed=true_airspeed_ft_s * FT_TO_METER,
+        altitude_m=0.0,
+    )
 
-    assert result["throttle"] == pytest.approx(0.137, abs=0.005)
-    assert result["alpha_deg"] == pytest.approx(2.14, abs=0.05)
-    assert result["elevator_deg"] == pytest.approx(-0.756, abs=0.05)
+    assert result["success"] is True
+    assert result["throttle"] == pytest.approx(throttle, abs=0.005)
+    assert result["alpha_deg"] == pytest.approx(alpha_deg, abs=0.02)
+    assert result["elevator_deg"] == pytest.approx(elevator_deg, abs=0.005)
+    assert abs(result["VT_dot"]) < 1e-4
+    assert abs(result["alpha_dot"]) < 1e-4
+    assert abs(result["q_dot"]) < 1e-4
+    assert abs(result["engine_power_dot"]) < 1e-12
 
 
 def test_trim_straight_level_has_small_dynamic_residuals(table_3_6_2_trim):
