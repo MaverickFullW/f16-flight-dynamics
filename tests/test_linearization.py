@@ -3,6 +3,7 @@ import pytest
 
 import src.f16sim.linearization as linearization
 from src.f16sim.linearization import (
+    analyze_longitudinal_modes,
     linearize_longitudinal,
     longitudinal_state_derivative,
 )
@@ -194,3 +195,55 @@ def test_longitudinal_linearization_matches_lewis_published_case():
         rtol=1e-2,
         atol=2e-3,
     )
+
+
+def test_analyze_longitudinal_modes_matches_lewis_published_case():
+    trim = trim_straight_level(
+        true_airspeed=502.0 * FT_TO_METER,
+        altitude_m=0.0,
+        cg_fraction=0.30,
+    )
+    alpha = np.deg2rad(trim["alpha_deg"])
+    x_equilibrium = np.array([trim["true_airspeed"], alpha, alpha, 0.0])
+    u_equilibrium = np.array([trim["throttle"], trim["elevator_deg"]])
+    A, _ = linearize_longitudinal(
+        x_equilibrium,
+        u_equilibrium,
+        altitude_m=0.0,
+        cg_fraction=0.30,
+    )
+
+    modes = analyze_longitudinal_modes(A)
+    short_period = modes["short_period"]
+    phugoid = modes["phugoid"]
+
+    assert set(modes) == {"short_period", "phugoid"}
+    assert short_period["eigenvalue"] == pytest.approx(
+        -1.2039 + 1.4922j, rel=1e-2, abs=2e-3
+    )
+    assert short_period["period"] == pytest.approx(4.21, rel=1e-2)
+    assert short_period["damping_ratio"] == pytest.approx(0.628, abs=5e-3)
+    assert phugoid["eigenvalue"] == pytest.approx(
+        -0.0087297 + 0.073966j, rel=1e-2, abs=2e-3
+    )
+    assert phugoid["period"] == pytest.approx(84.9, rel=1e-2)
+    assert phugoid["damping_ratio"] == pytest.approx(0.117, abs=5e-3)
+    assert short_period["omega_n"] > phugoid["omega_n"]
+    assert short_period["eigenvector"].shape == (4,)
+    assert phugoid["eigenvector"].shape == (4,)
+    assert np.iscomplexobj(short_period["eigenvector"])
+    assert np.iscomplexobj(phugoid["eigenvector"])
+    for mode in modes.values():
+        for property_name in ("omega_n", "omega_d", "damping_ratio", "period"):
+            assert isinstance(mode[property_name], float)
+
+
+@pytest.mark.parametrize("A", [np.zeros((3, 3)), np.zeros((4,)), np.zeros((4, 5))])
+def test_analyze_longitudinal_modes_rejects_invalid_shape(A):
+    with pytest.raises(ValueError, match=r"A must have shape \(4, 4\)"):
+        analyze_longitudinal_modes(A)
+
+
+def test_analyze_longitudinal_modes_requires_two_oscillatory_pairs():
+    with pytest.raises(ValueError, match="exactly two oscillatory"):
+        analyze_longitudinal_modes(np.diag([-1.0, -2.0, -3.0, -4.0]))

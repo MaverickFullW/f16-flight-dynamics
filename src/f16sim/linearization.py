@@ -165,3 +165,74 @@ def linearize_longitudinal(
         ) / (2.0 * step)
 
     return A, B
+
+
+def analyze_longitudinal_modes(A):
+    """Summarize the oscillatory modes of a longitudinal state matrix.
+
+    The positive-imaginary member of each complex-conjugate eigenvalue pair is
+    retained. The mode with the higher natural frequency is identified as the
+    short-period mode and the lower-frequency mode as the phugoid.
+
+    Parameters
+    ----------
+    A : array_like
+        Longitudinal state matrix with shape ``(4, 4)``.
+
+    Returns
+    -------
+    dict
+        Modal properties and right eigenvector for ``short_period`` and
+        ``phugoid``.
+
+    Raises
+    ------
+    ValueError
+        If ``A`` does not have shape ``(4, 4)`` or does not contain exactly
+        two oscillatory complex-conjugate mode pairs.
+    """
+    A = np.asarray(A)
+    if A.shape != (4, 4):
+        raise ValueError("A must have shape (4, 4)")
+
+    eigenvalues, eigenvectors = np.linalg.eig(A)
+    positive_indices = [
+        index for index, value in enumerate(eigenvalues) if value.imag > 0.0
+    ]
+    negative_eigenvalues = [value for value in eigenvalues if value.imag < 0.0]
+
+    conjugate_pairs_are_valid = (
+        len(positive_indices) == 2
+        and len(negative_eigenvalues) == 2
+        and all(
+            any(
+                np.isclose(value.conjugate(), candidate, rtol=1e-7, atol=1e-10)
+                for candidate in negative_eigenvalues
+            )
+            for value in eigenvalues[positive_indices]
+        )
+    )
+    if not conjugate_pairs_are_valid:
+        raise ValueError(
+            "A must produce exactly two oscillatory complex-conjugate modes"
+        )
+
+    modes = []
+    for index in positive_indices:
+        eigenvalue = eigenvalues[index]
+        sigma = float(eigenvalue.real)
+        omega_d = float(abs(eigenvalue.imag))
+        omega_n = float(np.sqrt(sigma**2 + omega_d**2))
+        modes.append(
+            {
+                "eigenvalue": eigenvalue,
+                "omega_n": omega_n,
+                "omega_d": omega_d,
+                "damping_ratio": float(-sigma / omega_n),
+                "period": float(2.0 * np.pi / omega_d),
+                "eigenvector": eigenvectors[:, index],
+            }
+        )
+
+    modes.sort(key=lambda mode: mode["omega_n"], reverse=True)
+    return {"short_period": modes[0], "phugoid": modes[1]}
