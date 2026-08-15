@@ -112,21 +112,66 @@ def trim_straight_level(
         vt_dot_ft_s2 = vt_dot / FT_TO_METER
         return vt_dot_ft_s2**2 + 100.0 * alpha_dot**2 + 10.0 * q_dot**2
 
-    result = minimize(
-        objective,
-        initial_guess,
-        method="Nelder-Mead",
-        options={"maxiter": int(max_iterations)},
-    )
+    def optimize(guess):
+        optimizer_result = minimize(
+            objective,
+            guess,
+            method="Nelder-Mead",
+            options={"maxiter": int(max_iterations)},
+        )
+        state, state_dot, rates = evaluate(optimizer_result.x)
+        vt_dot, alpha_dot, q_dot = rates
+        cost = (
+            (vt_dot / FT_TO_METER) ** 2
+            + 100.0 * alpha_dot**2
+            + 10.0 * q_dot**2
+        )
+        residuals_valid = (
+            abs(vt_dot) < 1e-4
+            and abs(alpha_dot) < 1e-4
+            and abs(q_dot) < 1e-4
+        )
+        return {
+            "optimizer_result": optimizer_result,
+            "state": state,
+            "state_dot": state_dot,
+            "rates": rates,
+            "cost": float(cost),
+            "valid": bool(optimizer_result.success and residuals_valid),
+            "residuals_valid": residuals_valid,
+        }
 
+    candidates = [optimize(initial_guess)]
+    if not candidates[0]["valid"]:
+        alternative_guesses = (
+            np.array([0.15, -2.0, 2.25]),
+            np.array([0.2, -1.0, 3.0]),
+            np.array([0.3, -3.0, 5.0]),
+        )
+        for guess in alternative_guesses:
+            if np.array_equal(guess, initial_guess):
+                continue
+            candidates.append(optimize(guess))
+
+    valid_candidates = [candidate for candidate in candidates if candidate["valid"]]
+    if valid_candidates:
+        selected = min(valid_candidates, key=lambda candidate: candidate["cost"])
+    else:
+        selected = min(candidates, key=lambda candidate: candidate["cost"])
+
+    result = selected["optimizer_result"]
+    state = selected["state"]
+    state_dot = selected["state_dot"]
+    vt_dot, alpha_dot, q_dot = selected["rates"]
     throttle, elevator_deg, alpha_deg = result.x
-    state, state_dot, rates = evaluate(result.x)
-    vt_dot, alpha_dot, q_dot = rates
+    message = str(result.message)
+    if not selected["residuals_valid"]:
+        message = f"{message}; physical trim residual validation failed"
 
     return {
-        "success": bool(result.success),
-        "message": str(result.message),
-        "cost": float(objective(result.x)),
+        "success": selected["valid"],
+        "message": message,
+        "cost": selected["cost"],
         "iterations": int(result.nit),
         "throttle": float(throttle),
         "elevator_deg": float(elevator_deg),

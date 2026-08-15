@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
+from scipy.optimize import OptimizeResult
 
+import src.f16sim.trim as trim_module
 from src.f16sim.parameters import FT_TO_METER
 from src.f16sim.trim import trim_straight_level
 
@@ -58,6 +60,46 @@ def test_trim_straight_level_optimizer_succeeds(table_3_6_2_trim):
 
     assert result["success"] is True
     assert result["cost"] < 1e-6
+
+
+def test_trim_straight_level_recovers_lewis_table_3_6_3_case():
+    result = trim_straight_level(
+        true_airspeed=502.0 * FT_TO_METER,
+        altitude_m=0.0,
+        cg_fraction=0.30,
+    )
+
+    assert result["success"] is True
+    assert result["throttle"] == pytest.approx(0.1485, abs=0.002)
+    assert result["elevator_deg"] == pytest.approx(-1.931, abs=0.02)
+    assert result["alpha_deg"] == pytest.approx(2.255, abs=0.02)
+    assert abs(result["VT_dot"]) < 1e-4
+    assert abs(result["alpha_dot"]) < 1e-4
+    assert abs(result["q_dot"]) < 1e-4
+    assert abs(result["engine_power_dot"]) < 1e-12
+
+
+def test_optimizer_success_with_poor_residuals_is_not_valid_trim(monkeypatch):
+    def poor_minimize(*args, **kwargs):
+        return OptimizeResult(
+            x=np.array([0.0, 0.0, 20.0]),
+            success=True,
+            message="Optimization terminated successfully.",
+            nit=1,
+        )
+
+    monkeypatch.setattr(trim_module, "minimize", poor_minimize)
+    result = trim_straight_level(
+        true_airspeed=500.0 * FT_TO_METER,
+        altitude_m=0.0,
+    )
+
+    assert result["success"] is False
+    assert "physical trim residual validation failed" in result["message"]
+    assert any(
+        abs(result[name]) >= 1e-4
+        for name in ("VT_dot", "alpha_dot", "q_dot")
+    )
 
 
 def test_trim_straight_level_returns_full_state_vectors(table_3_6_2_trim):
