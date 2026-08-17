@@ -2,9 +2,11 @@
 
 This repository implements a Python-based F-16 flight-dynamics simulation and analysis environment: a nonlinear rigid-body model, straight-and-level trim, numerical linearization, dynamic-mode analysis, feedback-control design, local linear/nonlinear validation, and 3D flight visualization. The aircraft motion in the final animation is generated from the integrated nonlinear states and feedback-controller commands—not from a predefined animation path.
 
-## Flight Demo
+Final nonlinear flight demonstration:
 
-[Watch the final nonlinear 6DoF flight demo (MP4)](media/f16_flight_demo.mp4)
+![F-16 nonlinear 6DoF flight simulation](media/f16_flight_demo.gif)
+
+## Flight Demo
 
 The 110 s demonstration starts from a 502 ft/s sea-level trim and proceeds through level flight, a climbing turn, an opposite-direction S-turn, recovery, a commanded axial roll, a U-turn, a curved exit, another recovery, a final turn, and a straight departure. Position and attitude are produced by the integrated nonlinear state history.
 
@@ -152,7 +154,7 @@ python scripts/compare_linear_nonlinear_bank_angle_maneuver.py
 python scripts/animate_flight_demo.py --camera fixed
 ```
 
-These cover longitudinal root locus, lateral pole trajectories, open-loop local validation, controlled linear/nonlinear validation, and the final trajectory. The linked MP4 is the saved final animation.
+These cover longitudinal root locus, lateral pole trajectories, open-loop local validation, controlled linear/nonlinear validation, and the final trajectory. The embedded GIF is the saved final animation.
 
 ## Installation and Use
 
@@ -175,7 +177,7 @@ python scripts/animate_flight_demo.py
 The demo supports `--camera {fixed,chase}`, `--fps`, `--speed`, `--aircraft-scale`, and `--vertical-exaggeration`. MP4 export additionally requires FFmpeg available to Matplotlib:
 
 ```bash
-python scripts/animate_flight_demo.py --save-mp4 --output media/f16_flight_demo.mp4
+python scripts/animate_flight_demo.py --save-mp4 --output f16_flight_demo.mp4
 ```
 
 ## Testing
