@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import matplotlib.pyplot as plt
+from matplotlib.animation import FFMpegWriter
 import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +31,10 @@ KP = 5.0
 KPHI = 1.0
 DURATION = 110.0
 DT = 0.01
+MP4_FPS = 60
+MP4_FIGURE_SIZE = (19.2, 10.8)
+MP4_DPI = 100
+DEFAULT_MP4_OUTPUT = PROJECT_ROOT / "media" / "f16_flight_demo.mp4"
 
 
 def _smooth_step(time, start, end):
@@ -342,7 +347,9 @@ def create_demo_trajectory_figures(result, vertical_exaggeration=5.0):
     )
     trajectory_axis.set_xlabel("North [ft]")
     trajectory_axis.set_ylabel("East [ft]")
-    trajectory_axis.set_zlabel("Altitude [ft], displayed scale")
+    trajectory_axis.set_zlabel(
+        "Altitude change from initial [ft], displayed scale"
+    )
     trajectory_axis.set_title(
         "Nonlinear F-16 Demo Trajectory\n"
         f"Vertical scale exaggerated x{vertical_exaggeration:g}"
@@ -403,18 +410,55 @@ if __name__ == "__main__":
     parser.add_argument("--speed", type=float, default=8.0)
     parser.add_argument("--aircraft-scale", type=float, default=92.0)
     parser.add_argument("--vertical-exaggeration", type=float, default=5.0)
+    parser.add_argument(
+        "--save-mp4",
+        action="store_true",
+        help="save the animation as a 1080p MP4 instead of opening it",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_MP4_OUTPUT,
+        help="MP4 output path (default: media/f16_flight_demo.mp4)",
+    )
     arguments = parser.parse_args()
     result = simulate_flight_demo()
     _print_diagnostics(result)
-    trajectory_figure, top_figure = create_demo_trajectory_figures(
-        result, vertical_exaggeration=arguments.vertical_exaggeration
-    )
+    animation_fps = MP4_FPS if arguments.save_mp4 else arguments.fps
+    if not arguments.save_mp4:
+        trajectory_figure, top_figure = create_demo_trajectory_figures(
+            result, vertical_exaggeration=arguments.vertical_exaggeration
+        )
     animation = create_flight_demo_animation(
         camera=arguments.camera,
-        fps=arguments.fps,
+        fps=animation_fps,
         playback_speed=arguments.speed,
         aircraft_scale=arguments.aircraft_scale,
         result=result,
         print_diagnostics=False,
     )
-    plt.show()
+    if arguments.save_mp4:
+        output_path = arguments.output.expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        animation._fig.set_size_inches(*MP4_FIGURE_SIZE, forward=True)
+        video_duration = result["times"][-1] / arguments.speed
+        print("Preparing MP4 export; rendering may take some time...")
+        print(f"Output path: {output_path}")
+        print(f"FPS: {MP4_FPS}")
+        width = MP4_FIGURE_SIZE[0] * MP4_DPI
+        height = MP4_FIGURE_SIZE[1] * MP4_DPI
+        print(f"Resolution: {width:.0f}x{height:.0f}")
+        print(f"Playback speed: {arguments.speed:g}x")
+        print(f"Approximate video duration: {video_duration:.2f} s")
+        writer = FFMpegWriter(
+            fps=MP4_FPS,
+            codec="libx264",
+            extra_args=[
+                "-crf", "18", "-preset", "medium", "-pix_fmt", "yuv420p"
+            ],
+        )
+        animation.save(output_path, writer=writer, dpi=MP4_DPI)
+        print(f"MP4 export complete: {output_path}")
+        plt.close(animation._fig)
+    else:
+        plt.show()

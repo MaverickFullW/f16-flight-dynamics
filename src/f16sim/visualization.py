@@ -444,9 +444,18 @@ def create_flight_animation(
         fontsize=11,
         bbox={"facecolor": "white", "alpha": 0.75, "edgecolor": "0.4"},
     )
+    vertical_reference_hud = axis.text2D(
+        0.02,
+        0.02,
+        "Vertical reference: initial altitude = 0 ft",
+        transform=axis.transAxes,
+        va="bottom",
+        fontsize=8,
+        color="0.35",
+    )
     axis.set_xlabel("North [ft]")
     axis.set_ylabel("East [ft]")
-    axis.set_zlabel("Altitude gain [ft]")
+    axis.set_zlabel("Altitude change from initial [ft]")
     axis.set_title("F-16 Nonlinear 6DoF Controlled Flight")
     axis.view_init(elev=24.0, azim=-58.0)
     axis.grid(True, alpha=0.22)
@@ -614,6 +623,7 @@ def create_flight_animation(
             right_hud,
             control_hud,
             phase_hud,
+            vertical_reference_hud,
         )
 
     animation = FuncAnimation(
