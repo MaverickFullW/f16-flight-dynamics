@@ -50,7 +50,11 @@ $$
 
 $$
 \dot{\mathbf{v}}_b=\frac{\mathbf{F}_b}{m}
-+C_{n\rightarrow b}\begin{bmatrix}0\\0\\g\end{bmatrix}
++C_{n\rightarrow b}\begin{bmatrix}
+0\\
+0\\
+g
+\end{bmatrix}
 -\boldsymbol{\omega}_b\times\mathbf{v}_b,
 $$
 
@@ -144,7 +148,7 @@ Agreement is expected locally around trim and for small perturbations—not acro
 
 ## Analysis and Results
 
-No static plots are currently stored under `docs/`. The strongest existing figures can be reproduced with:
+No static plots are currently committed. The strongest existing figures can be reproduced with:
 
 ```bash
 python scripts/plot_pitch_rate_root_locus.py
@@ -190,9 +194,6 @@ The pytest suite covers vector/rotation utilities, quaternions, RK4 integration,
 src/f16sim/   Core dynamics, model, trim, linearization, controls, visualization
 scripts/      Analysis, validation, simulation, animation, and export entry points
 tests/        Unit, physics, source-reference, and regression tests
-docs/         Reserved for documentation and generated figures
-data/         Reserved for generated simulation data
-notebooks/    Reserved for exploratory analysis
 media/        Final rendered flight-demo media
 ```
 
