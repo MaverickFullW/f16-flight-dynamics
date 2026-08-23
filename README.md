@@ -2,9 +2,13 @@
 
 This repository implements a Python-based F-16 flight-dynamics simulation and analysis environment: a nonlinear rigid-body model, straight-and-level trim, numerical linearization, dynamic-mode analysis, feedback-control design, local linear/nonlinear validation, and 3D flight visualization. The aircraft motion in the final animation is generated from the integrated nonlinear states and feedback-controller commands—not from a predefined animation path.
 
-Final nonlinear flight demonstration:
+Final nonlinear flight demonstrations:
 
-![F-16 nonlinear 6DoF flight simulation](media/f16_flight_demo.gif)
+<div align="center">
+  <img src="media/f16_descending_360_turn_readme.gif" alt="F-16 descending 360-degree turn" width="44%">
+  &emsp;&emsp;&emsp;
+  <img src="media/f16_flight_demo_readme.gif" alt="F-16 nonlinear 6DoF flight demonstration" width="44%">
+</div>
 
 ## Flight Demo
 

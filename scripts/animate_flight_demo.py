@@ -18,7 +18,10 @@ from src.f16sim.controllers import pitch_attitude_control
 from src.f16sim.parameters import FT_TO_METER
 from src.f16sim.simulation import simulate_f16_feedback
 from src.f16sim.trim import trim_straight_level
-from src.f16sim.visualization import create_flight_animation
+from src.f16sim.visualization import (
+    apply_readme_animation_layout,
+    create_flight_animation,
+)
 
 
 TRUE_AIRSPEED = 502.0 * FT_TO_METER
@@ -386,7 +389,7 @@ def create_flight_demo_animation(
         result = simulate_flight_demo()
     if print_diagnostics:
         _print_diagnostics(result)
-    return create_flight_animation(
+    animation = create_flight_animation(
         result["times"],
         result["states"],
         controls=result["controls"],
@@ -400,6 +403,10 @@ def create_flight_demo_animation(
         vertical_view_size=3500.0,
         aircraft_scale=aircraft_scale,
         trail_duration=12.0,
+    )
+    return apply_readme_animation_layout(
+        animation,
+        "F-16 Nonlinear 6DoF Controlled Flight",
     )
 
 

@@ -246,6 +246,69 @@ def select_animation_frames(times, fps=30, playback_speed=3.0):
     return indices.astype(int)
 
 
+def apply_readme_animation_layout(
+    animation,
+    title,
+    vertical_reference="Vertical reference: initial altitude = 0 ft",
+):
+    """Apply the shared compact portfolio composition to a flight animation."""
+    figure = animation._fig
+    axis = figure.axes[0]
+    figure.set_size_inches(7.0, 7.0, forward=True)
+    axis.set_position((0.08, 0.08, 0.84, 0.76))
+    axis.set_title("")
+    figure.suptitle(title, x=0.5, y=0.985, fontsize=10.5)
+
+    left_hud, right_hud, control_hud, phase_hud, vertical_hud = axis.texts[-5:]
+    for hud in (left_hud, right_hud, control_hud, phase_hud, vertical_hud):
+        hud.set_transform(figure.transFigure)
+    left_hud.set_position((0.015, 0.915))
+    right_hud.set_position((0.985, 0.915))
+    right_hud.set_ha("right")
+    control_hud.set_position((0.015, 0.21))
+    phase_hud.set_position((0.5, 0.915))
+    vertical_hud.set_position((0.5, 0.012))
+    vertical_hud.set_ha("center")
+    vertical_hud.set_text(vertical_reference)
+
+    hud_box = {
+        "boxstyle": "square,pad=0.25",
+        "facecolor": "white",
+        "alpha": 0.72,
+        "edgecolor": "0.75",
+    }
+    for hud in (left_hud, right_hud, control_hud):
+        hud.set_fontsize(8.5)
+        hud.set_bbox(hud_box)
+    phase_hud.set_fontsize(9)
+    phase_hud.set_bbox(
+        {
+            "boxstyle": "square,pad=0.25",
+            "facecolor": "white",
+            "alpha": 0.75,
+            "edgecolor": "0.4",
+        }
+    )
+    vertical_hud.set_fontsize(8)
+
+    axis.tick_params(labelsize=8)
+    axis.xaxis.label.set_fontsize(9)
+    axis.yaxis.label.set_fontsize(9)
+    axis.zaxis.label.set_fontsize(9)
+    legend = axis.get_legend()
+    if legend is not None:
+        legend.set_loc("lower right")
+        legend.set_bbox_to_anchor(
+            (0.985, 0.02), transform=figure.transFigure
+        )
+        legend.set_ncols(1)
+        legend.set_frame_on(True)
+        legend.get_frame().set_alpha(0.65)
+        for text in legend.get_texts():
+            text.set_fontsize(8)
+    return animation
+
+
 def _euler_from_quaternion(quaternion):
     ned_to_body = quaternion_to_dcm(quaternion)
     phi = np.arctan2(ned_to_body[1, 2], ned_to_body[2, 2])
