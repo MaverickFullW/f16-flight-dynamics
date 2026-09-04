@@ -215,8 +215,8 @@ about a trim point:
 
 | Model | Perturbation states | Perturbation controls |
 |---|---|---|
-| Longitudinal | `V_T`, α, θ, `q` | throttle, `δ_e` |
-| Lateral-directional | β, φ, `p`, `r` | `δ_a`, `δ_r` |
+| Longitudinal | Vₜ, α, θ, q | throttle, δₑ |
+| Lateral-directional | β, φ, p, r | δₐ, δᵣ |
 
 Both reduced derivative functions map their variables into the full nonlinear 14-state model before extracting the corresponding rates.
 
@@ -253,13 +253,27 @@ The final demo uses proportional cascades whose gains are analyzed with pole/roo
 q_{\mathrm{cmd}}
 \xrightarrow{\;K_q=5.0\;}
 \text{pitch-rate feedback}
-\longrightarrow \delta_e,\\[4pt]
+\longrightarrow \delta_e,
+\end{aligned}
+```
+
+<br><br>
+
+```math
+\begin{aligned}
 \phi_{\mathrm{cmd}}
 &\xrightarrow{\;K_\phi=1.0\;}
 p_{\mathrm{cmd}}
 \xrightarrow{\;K_p=5.0\;}
 \text{roll-rate feedback}
-\longrightarrow \delta_a,\\[4pt]
+\longrightarrow \delta_a,
+\end{aligned}
+```
+
+<br><br>
+
+```math
+\begin{aligned}
 r
 &\xrightarrow{\;K_r=50.0\;}
 \text{yaw-rate feedback}
