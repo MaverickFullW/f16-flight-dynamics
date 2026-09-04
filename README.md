@@ -246,38 +246,32 @@ The longitudinal implementation classifies its pairs by natural frequency. Later
 
 The final demo uses proportional cascades whose gains are analyzed with pole/root-locus and response scripts. They are design-point values for 502 ft/s at sea level, not universally optimal or gain-scheduled values. These augmentation laws are not a complete F-16 flight-control computer and do not provide control allocation, envelope protection, or failure logic.
 
+**Pitch control:**
+
 ```math
 \begin{aligned}
-\theta_{\mathrm{cmd}}
-&\xrightarrow{\;K_\theta=0.5\;}
-q_{\mathrm{cmd}}
-\xrightarrow{\;K_q=5.0\;}
-\text{pitch-rate feedback}
-\longrightarrow \delta_e,
+q_{\mathrm{cmd}} &= K_\theta\left(\theta_{\mathrm{cmd}}-\theta\right), \\
+\delta_e &= K_q\left(q_{\mathrm{cmd}}-q\right), \\
+K_\theta &= 0.5, \qquad K_q = 5.0.
 \end{aligned}
 ```
 
-<br><br>
+**Roll control:**
 
 ```math
 \begin{aligned}
-\phi_{\mathrm{cmd}}
-&\xrightarrow{\;K_\phi=1.0\;}
-p_{\mathrm{cmd}}
-\xrightarrow{\;K_p=5.0\;}
-\text{roll-rate feedback}
-\longrightarrow \delta_a,
+p_{\mathrm{cmd}} &= K_\phi\left(\phi_{\mathrm{cmd}}-\phi\right), \\
+\delta_a &= K_p\left(p_{\mathrm{cmd}}-p\right), \\
+K_\phi &= 1.0, \qquad K_p = 5.0.
 \end{aligned}
 ```
 
-<br><br>
+**Yaw damping:**
 
 ```math
 \begin{aligned}
-r
-&\xrightarrow{\;K_r=50.0\;}
-\text{yaw-rate feedback}
-\longrightarrow \delta_r.
+\delta_r &= -K_r r, \\
+K_r &= 50.0.
 \end{aligned}
 ```
 
