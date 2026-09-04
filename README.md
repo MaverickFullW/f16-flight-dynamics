@@ -215,8 +215,8 @@ about a trim point:
 
 | Model | Perturbation states | Perturbation controls |
 |---|---|---|
-| Longitudinal | $\begin{bmatrix}V_T & \alpha & \theta & q\end{bmatrix}^{\mathsf T}$ | $\begin{bmatrix}\delta_T & \delta_e\end{bmatrix}^{\mathsf T}$ |
-| Lateral-directional | $\begin{bmatrix}\beta & \phi & p & r\end{bmatrix}^{\mathsf T}$ | $\begin{bmatrix}\delta_a & \delta_r\end{bmatrix}^{\mathsf T}$ |
+| Longitudinal | `V_T`, α, θ, `q` | throttle, `δ_e` |
+| Lateral-directional | β, φ, `p`, `r` | `δ_a`, `δ_r` |
 
 Both reduced derivative functions map their variables into the full nonlinear 14-state model before extracting the corresponding rates.
 
